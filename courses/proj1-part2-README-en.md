@@ -26,7 +26,7 @@ From the discussion above, we can conclude that we need to store the data in the
 
 Concretely, every table will have a `TableID`, and each row will have a `RowID`. In the case where the primary key is an integer, the primary key will be the `RowID`. `TableID` is unique in the whole cluster, and `RowID` is unique in the table. Both `TableID` and `RowID` are all `int64` types. There are also `tablePrefix` and `RecordPrefixSep` inside the key. There are both string constants for differentiating with other data within the Key-Value space. 
 ```
-    Key： tablePrefix_tableID_recordPrefixSep_rowID
+    Key:  tablePrefix_tableID_recordPrefixSep_rowID
     Value: [col1, col2, col3, col4]
 ```
 
@@ -41,7 +41,7 @@ For non-unique indexes, we also encode `rowID` into the key:
 
 ```
    Key: tablePrefix_tableID_indexPrefixSep_indexID_ColumnsValue_rowID
-   Value：null
+   Value: null
 ```
 
 You may also consider how the data should be stored if `join` operation dominates the workload.

@@ -56,6 +56,7 @@ func TablePrefix() []byte {
 // appendTableRecordPrefix appends table record prefix  "t[tableID]_r".
 func appendTableRecordPrefix(buf []byte, tableID int64) []byte {
 	buf = append(buf, tablePrefix...)
+	// encode the tableID and append encoded tableID to buf
 	buf = codec.EncodeInt(buf, tableID)
 	buf = append(buf, recordPrefixSep...)
 	return buf

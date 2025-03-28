@@ -249,7 +249,7 @@ func (m *ownerManager) campaignLoop(ctx context.Context, etcdSession *concurrenc
 			return
 		default:
 		}
-		// If the etcd server turns clocks forward，the following case may occur.
+		// If the etcd server turns clocks forward,the following case may occur.
 		// The etcd server deletes this session's lease ID, but etcd session doesn't find it.
 		// In this time if we do the campaign operation, the etcd server will return ErrLeaseNotFound.
 		if terror.ErrorEqual(err, rpctypes.ErrLeaseNotFound) {
