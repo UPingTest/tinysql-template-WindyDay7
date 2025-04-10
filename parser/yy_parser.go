@@ -94,9 +94,12 @@ type Parser struct {
 	lexer     Scanner
 
 	// the following fields are used by yyParse to reduce allocation.
-	cache  []yySymType
+	// 规约过程中使用的栈, 用于存储临时信息
+	cache []yySymType
+	// 临时存储词法分析器读取的每一个 Token 的值
 	yylval yySymType
-	yyVAL  *yySymType
+	// yyVAL is used to store the value of the last rule matched. 用于存储规约的结果, 也就是某条语法规则解析的结果
+	yyVAL *yySymType
 }
 
 type stmtTexter interface {

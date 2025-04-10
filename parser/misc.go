@@ -102,7 +102,7 @@ func initTokenFunc(str string, fn func(s *Scanner) (int, Pos, string)) {
 		}
 		ruleTable.childs[c].fn = fn
 	}
-	return
+	// return
 }
 
 func init() {
@@ -807,16 +807,19 @@ func (s *Scanner) isTokenIdentifier(lit string, offset int) int {
 	if s.r.peek() == '(' {
 		checkBtFuncToken = true
 	} else if s.sqlMode.HasIgnoreSpaceMode() {
+		// 如果过滤掉空白字符后第一个字符是'('，则认为是函数调用
 		s.skipWhitespace()
 		if s.r.peek() == '(' {
 			checkBtFuncToken = true
 		}
 	}
+	// 如果是函数调用，且函数名在btFuncTokenMap中存在，则返回btFuncTokenMap中的token
 	if checkBtFuncToken {
 		if tok := btFuncTokenMap[string(data)]; tok != 0 {
 			return tok
 		}
 	}
+	// 如果是关键字，且关键字在tokenMap中存在，则返回tokenMap中的token
 	tok, _ := tokenMap[string(data)]
 	return tok
 }

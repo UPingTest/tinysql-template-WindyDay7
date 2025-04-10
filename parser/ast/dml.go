@@ -41,6 +41,8 @@ var (
 )
 
 // JoinType is join type, including cross/left/right/full.
+//
+//	这是 go 语言枚举类型的写法
 type JoinType int
 
 const (

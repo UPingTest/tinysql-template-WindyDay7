@@ -65,7 +65,9 @@ func appendTableRecordPrefix(buf []byte, tableID int64) []byte {
 // EncodeRowKeyWithHandle encodes the table id, row handle into a kv.Key
 func EncodeRowKeyWithHandle(tableID int64, handle int64) kv.Key {
 	buf := make([]byte, 0, RecordRowKeyLen)
+	// get the table record prefix, format is "t[tableID]_r"
 	buf = appendTableRecordPrefix(buf, tableID)
+	// row handle is the encoded handle
 	buf = codec.EncodeInt(buf, handle)
 	return buf
 }
@@ -99,7 +101,35 @@ func DecodeRecordKey(key kv.Key) (tableID int64, handle int64, err error) {
 	 *   5. understanding the coding rules is a prerequisite for implementing this function,
 	 *      you can learn it in the projection 1-2 course documentation.
 	 */
-	return
+	// 1. 检查 key 是否有效
+	if len(key) < RecordRowKeyLen {
+		return 0, 0, errInvalidRecordKey.GenWithStack("invalid record key length: %d", len(key))
+	}
+
+	// 2. 检查前缀是否匹配 "t"
+	if key[0] != tablePrefix[0] {
+		return 0, 0, errInvalidRecordKey.GenWithStack("invalid record key prefix")
+	}
+
+	// 3. 解析 tableID, remain 为剩余的 key, 用于后续的检测
+	var remain []byte
+	remain, tableID, err = codec.DecodeInt(key[tablePrefixLength:])
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// 4. 检查 record 分隔符 "_r", 检查 remain 的长度是否大于 recordPrefixSepLength
+	if len(remain) < recordPrefixSepLength || !bytes.Equal(remain[:recordPrefixSepLength], recordPrefixSep) {
+		return 0, 0, errInvalidRecordKey.GenWithStack("invalid record key separator")
+	}
+
+	// 5. 解析 handle
+	_, handle, err = codec.DecodeInt(remain[recordPrefixSepLength:])
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return tableID, handle, nil
 }
 
 // appendTableIndexPrefix appends table index prefix  "t[tableID]_i".
@@ -149,6 +179,33 @@ func DecodeIndexKeyPrefix(key kv.Key) (tableID int64, indexID int64, indexValues
 	 *   5. understanding the coding rules is a prerequisite for implementing this function,
 	 *      you can learn it in the projection 1-2 course documentation.
 	 */
+	// 1. 检查 key 是否有效
+	if len(key) < RecordRowKeyLen {
+		return 0, 0, nil, errInvalidRecordKey.GenWithStack("invalid record key length: %d", len(key))
+	}
+	// 2. 检查前缀是否匹配 "t"
+	if key[0] != tablePrefix[0] {
+		return 0, 0, nil, errInvalidRecordKey.GenWithStack("invalid record key prefix")
+	}
+	// 3. 解析 tableID, remain 为剩余的 key, 用于后续的检测
+	var remain []byte
+	remain, tableID, err = codec.DecodeInt(key[tablePrefixLength:])
+	if err != nil {
+		return 0, 0, nil, err
+	}
+	// 4. 检查 record 分隔符 "_r", 检查 remain 的长度是否大于 recordPrefixSepLength
+	if len(remain) < recordPrefixSepLength || !bytes.Equal(remain[:recordPrefixSepLength], indexPrefixSep) {
+		return 0, 0, nil, errInvalidRecordKey.GenWithStack("invalid record key separator")
+	}
+	// 5. 解析 indexID
+	remain = remain[recordPrefixSepLength:]
+	remain, indexID, err = codec.DecodeInt(remain)
+	if err != nil {
+		return 0, 0, nil, err
+	}
+	// 6. 解析 indexValues
+	indexValues = remain
+
 	return tableID, indexID, indexValues, nil
 }
 

@@ -6,7 +6,7 @@
 
 ## SQL 处理流程
 
-从前面的学习我们知道,在数据库中我们通过 SQL 语句来操作数据的.但是 SQL 本身只是文本数据,数据库需要在接收 SQL 文本、验证合法性等步骤之后才能对 SQL 语句进行处理.这其实是在计算机科学非常经典的编译问题,与程序语言的编译器十分相似.
+从前面的学习我们知道,在数据库中我们通过 SQL 语句来操作数据的.但是 SQL 本身只是文本数据,数据库需要在接收 SQL 文本. 验证合法性等步骤之后才能对 SQL 语句进行处理.这其实是在计算机科学非常经典的编译问题,与程序语言的编译器十分相似.
 
 在介绍 Parser 之前,我们将会介绍 SQL 语句在 TinySQL 中是如何进行处理的.
 
@@ -16,7 +16,7 @@
 
 ## Parser 简介
 
-Parser 主要的功能是将 SQL 语句文本按照预先定义的 SQL 语法规则进行解析,并将其转换为抽象语法树(Abstract Syntax Tree, AST).抽象语法树是计算机科学中编译原理的一个术语.它以树形表现编程语言的语法结构.举个简单的例子,对于 SQL: Select a from t where b > 0; 将会被转换为: 
+Parser 主要的功能是将 SQL 语句文本按照预先定义的 SQL 语法规则进行解析, 并将其转换为抽象语法树(Abstract Syntax Tree, AST). 抽象语法树是计算机科学中编译原理的一个术语.它以树形表现编程语言的语法结构.举个简单的例子,对于 SQL: Select a from t where b > 0; 将会被转换为: 
 
 ![AST](imgs/proj2-2.png)
 
@@ -25,11 +25,11 @@ Parser 主要的功能是将 SQL 语句文本按照预先定义的 SQL 语法规
 ### Lex & Yacc 介绍
 在编译原理中,词法分析和语法分析是用来从语言文本生成抽象语法树的工具,其中[Lex & Yacc](http://dinosaur.compilertools.net/) 是一个知名但古老的用来生成词法分析器和语法分析器的工具.
 
-在这个项目中,我们不需要深入了解词法分析器和语法分析器,我们只需要能够看懂语法定义文件、了解生成的解析器如何工作即可.下面有个简单的例子: 
+在这个项目中,我们不需要深入了解词法分析器和语法分析器,我们只需要能够看懂语法定义文件. 了解生成的解析器如何工作即可.下面有个简单的例子: 
 
 ![Lex & Yacc](imgs/proj2-3.png)
 
-上图使用了 Lex & Yacc 构建编译器的流程.其中,Lex 根据用户定义的 patterns 生成词法分析器.词法分析器读取源代码,根据 patterns 将源代码转换成 tokens 输出.Yacc 根据用户定义的语法规则生成语法分析器.语法分析器以词法分析器输出的 tokens 作为输入,根据语法规则创建出语法树.最后对语法树遍历生成输出结果,结果可以是产生机器代码,或者是边遍历 AST 边解释执行.
+上图使用了 Lex & Yacc 构建编译器的流程.其中,Lex 根据用户定义的 **patterns** 生成词法分析器. 词法分析器读取源代码,根据 patterns 将源代码转换成 tokens 输出. Yacc 根据用户定义的语法规则生成**语法分析器**. 语法分析器以词法分析器输出的 tokens 作为输入, 根据语法规则创建出语法树. 最后对语法树遍历生成输出结果, 结果可以是产生机器代码, 或者是边遍历 AST 边解释执行.
 
 从上面的流程可以看出,用户需要分别为 Lex 提供 patterns 的定义,为 Yacc 提供语法规则文件,Lex & Yacc 根据用户提供的输入文件,生成符合他们需求的词法分析器和语法分析器.这两种配置都是文本文件,并且结构相同: 
 
@@ -66,7 +66,7 @@ Parser 主要的功能是将 SQL 语句文本按照预先定义的 SQL 语法规
 ...
 ```
 
-上面只列出了规则定义部分,可以看出该规则使用正则表达式定义了变量、整数和操作符等几种 token.例如整数 token 的定义如下: 
+上面只列出了规则定义部分,可以看出该规则使用正则表达式定义了变量. 整数和操作符等几种 token.例如整数 token 的定义如下: 
 
 ```goyacc
 [0-9]+  {
@@ -183,7 +183,7 @@ nodeType *opr(int oper, int nops, ...) {
 
 ### goyacc 简介
 
-[goyacc](https://github.com/cznic/goyacc) 是 golang 版的 Yacc.和 Yacc 的功能一样,goyacc 根据输入的语法规则文件,生成该语法规则的 go 语言版解析器.goyacc 生成的解析器 yyParse 要求词法分析器符合下面的接口: 
+[goyacc](https://github.com/cznic/goyacc) 是 golang 版的 Yacc.和 Yacc 的功能一样,goyacc 根据输入的语法规则文件,生成该语法规则的 go 语言版解析器. goyacc 生成的解析器 yyParse 要求词法分析器符合下面的接口: 
 
 ```go
 type yyLexer interface {
@@ -254,9 +254,9 @@ parser/parser.y 行数比较多,不过不要怕,该文件依然是上面介绍�
 
 parser.y 第三部分 subroutines 是空白没有内容的, 所以我们只需要关注第一部分 definitions 和第二部分 rules.
 
-第一部分主要是定义 token 的类型、优先级、结合性等.注意 union 这个联合体结构体: 
+第一部分主要是定义 token 的类型. 优先级. 结合性等.注意 union 这个联合体结构体: 
 
-```goyacc
+```go
 %union {
     offset int // offset
     item interface{}
@@ -266,11 +266,11 @@ parser.y 第三部分 subroutines 是空白没有内容的, 所以我们只需�
 }
 ```
 
-该联合体结构体定义了在语法解析过程中被压入堆栈的项的属性和类型.
+该联合体结构体定义了在**语法解析过程中被压入堆**栈的项的属性和类型.
 
-压入堆栈的项可能是 终结符,也就是 token,它的类型可以是 item 或 ident；
+压入堆栈的项可能是 终结符, 也就是 token, 它的类型可以是 item 或 ident；
 
-这个项也可能是非终结符,即产生式的左侧,它的类型可以是 expr、 statement、 item 或 ident.
+这个项也可能是非终结符,即产生式的左侧,它的类型可以是 expr, statement, item 或 ident.
 
 goyacc 根据这个 union 在解析器里生成对应的 struct 是: 
 
@@ -285,7 +285,7 @@ type yySymType struct {
 }
 ```
 
-在语法解析过程中,非终结符会被构造成抽象语法树（AST）的节点 ast.ExprNode 或 ast.StmtNode .抽象语法树相关的数据结构都定义在 ast 包中,它们大都实现了 ast.Node 接口: 
+在语法解析过程中,非终结符会被构造成抽象语法树（AST）的节点 ast.ExprNode 或 ast.StmtNode. 抽象语法树相关的数据结构都定义在 ast 包中,它们大都实现了 ast.Node 接口: 
 
 ```go
 // Node is the basic element of the AST.
@@ -297,7 +297,7 @@ type Node interface {
 }
 ```
 
-这个接口有一个 Accept 方法,接受 Visitor 参数,后续对 AST 的处理,主要依赖这个 Accept 方法,以 Visitor 模式遍历所有的节点以及对 AST 做结构转换.
+这个接口有一个 Accept 方法, 接受 Visitor 参数, 后续对 AST 的处理, 主要依赖这个 Accept 方法, 以 Visitor 模式遍历所有的节点以及对 AST 做结构转换.
 
 ```go
 // Visitor visits a Node.
@@ -391,11 +391,11 @@ union 后面是对 token 和非终结符按照类型分别定义:
 ...
 ```
 
-parser.y 文件的第二部分是 SQL 语法的产生式和每个规则对应的 action.SQL语法非常复杂,parser.y 的大部分内容都是产生式的定义.
+parser.y 文件的第二部分是 SQL 语法的产生式和每个规则对应的 action. SQL语法非常复杂, parser.y 的大部分内容都是产生式的定义.
 
 SQL 语法可以参照 MySQL 参考手册的 SQL Statements 部分,例如 SELECT 语法的定义如下: 
 
-```sql
+```SQL
 SELECT
     [ALL | DISTINCT | DISTINCTROW ]
       [HIGH_PRIORITY]
@@ -437,7 +437,7 @@ SelectStmt:
 
 产生式 SelectStmt 和 SELECT 语法是对应的.
 
-省略了大括号中的 action,这部分代码会构建出 AST的 ast.SelectStmt(parser/ast/dml.go) 节点: 
+省略了大括号中的 action, 这部分代码会构建出 AST 的 ast.SelectStmt(parser/ast/dml.go) 节点: 
 
 ```go
 type SelectStmt struct {
@@ -469,11 +469,11 @@ type SelectStmt struct {
 }
 ```
 
-可以看出,ast.SelectStmt 结构体内包含的内容和 SELECT 语法也是一一对应的.
+可以看出, ast.SelectStmt 结构体内包含的内容和 SELECT 语法也是一一对应的.
 
-其他的产生式也都是根据对应的 SQL 语法来编写的.从 parser.y 的注释看到,这个文件最初是用工具从 BNF 转化生成的,从头手写这个规则文件,工作量会非常大.
+其他的产生式也都是根据对应的 SQL 语法来编写的. 从 parser.y 的注释看到, 这个文件最初是用工具从 BNF 转化生成的, 从头手写这个规则文件, 工作量会非常大.
 
-完成了语法规则文件 parser.y 的定义,就可以使用 goyacc 生成语法解析器: 
+完成了语法规则文件 parser.y 的定义, 就可以使用 goyacc 生成语法解析器: 
 
 ```bash
 cd parser
@@ -484,7 +484,7 @@ make
 
 ## 作业描述
 
-完成 `JoinTable` 的实现,你可以利用 parser test 里失败的测试确定需要补充哪些语法部分.
+完成 `JoinTable` 的实现, 你可以利用 parser test 里失败的测试确定需要补充哪些语法部分.
 
 ## 测试
 

@@ -35,11 +35,13 @@ type Pos struct {
 
 // Scanner implements the yyLexer interface.
 type Scanner struct {
-	r   reader
+	r reader
+	// buf is used to store the scanned string.
 	buf bytes.Buffer
 
-	errs         []error
-	warns        []error
+	errs  []error
+	warns []error
+	// stmtStartPos is the start position of current statement.
 	stmtStartPos int
 
 	// For scanning such kind of comment: /*! MySQL-specific code */ or /*+ optimizer hint */
@@ -52,11 +54,15 @@ type Scanner struct {
 	lastScanOffset int
 }
 
+// 读取特殊的注释
+// specialCommentScanner is used to scan special comments like /*! MySQL-specific code */ or /*+ optimizer hint */
 type specialCommentScanner interface {
 	stmtTexter
 	scan() (tok int, pos Pos, lit string)
 }
 
+// mysqlSpecificCodeScanner is used to scan MySQL specific code in special comment.
+// 例如 /*!VersionNumber MySQL-specific-code */" to "MySQL-specific-code, 特定版本的 SQL 语句
 type mysqlSpecificCodeScanner struct {
 	*Scanner
 	Pos
@@ -70,6 +76,9 @@ func (s *mysqlSpecificCodeScanner) scan() (tok int, pos Pos, lit string) {
 	return
 }
 
+// 读取查询优化的提示
+// optimizerHintScanner is used to scan optimizer hints in special comment.
+// 例如 /*+ optimizer hint */，读取正确的 SQL 语句
 type optimizerHintScanner struct {
 	*Scanner
 	Pos
@@ -118,15 +127,17 @@ func (s *Scanner) stmtText() string {
 	}
 
 	endPos := s.r.pos().Offset
+	// 去掉开头与结尾的换行符
 	if s.r.s[endPos-1] == '\n' {
 		endPos = endPos - 1 // trim new line
 	}
+	// 修剪掉空格和换行
 	if s.r.s[s.stmtStartPos] == '\n' {
 		s.stmtStartPos++
 	}
-
+	// 提取出 SQL 语句
 	text := s.r.s[s.stmtStartPos:endPos]
-
+	// 读取下一条 SQL 语句
 	s.stmtStartPos = endPos
 	return text
 }
@@ -156,7 +167,7 @@ func (s *Scanner) AppendError(err error) {
 }
 
 // Lex returns a token and store the token value in v.
-// Scanner satisfies yyLexer interface.
+// ! Scanner satisfies yyLexer interface.
 // 0 and invalid are special token id this function would return:
 // return 0 tells parser that scanner meets EOF,
 // return invalid tells parser that scanner meets illegal character.
@@ -169,20 +180,22 @@ func (s *Scanner) Lex(v *yySymType) int {
 		tok = handleIdent(v)
 	}
 	if tok == identifier {
+		// 判断 lit 是一个普通标识符还是关键字 KeyWord
 		if tok1 := s.isTokenIdentifier(lit, pos.Offset); tok1 != 0 {
 			tok = tok1
 		}
 	}
+	// 特殊处理双引号
 	if s.sqlMode.HasANSIQuotesMode() &&
 		tok == stringLit &&
 		s.r.s[v.offset] == '"' {
 		tok = identifier
 	}
-
+	// 特殊处理 || 符号
 	if tok == pipes && !(s.sqlMode.HasPipesAsConcatMode()) {
 		return pipesAsOr
 	}
-
+	// 特殊处理 AND 和 NOT 的优先级
 	if tok == not && s.sqlMode.HasHighNotPrecedenceMode() {
 		return not2
 	}
@@ -254,7 +267,14 @@ func (s *Scanner) scan() (tok int, pos Pos, lit string) {
 		// leave specialComment scan mode after all stream consumed.
 		s.specialComment = nil
 	}
-
+	// normal scan mode.
+	// read the first char
+	// if the first char is a space, skip it.
+	// if the first char is EOF, return 0.
+	// if the first char is not EOF, check whether it's a special char.
+	// if it's a special char, return the token.
+	// if it's not a special char, check whether it's an identifier.
+	// if it's an identifier, return the token.
 	ch0 := s.r.peek()
 	if unicode.IsSpace(ch0) {
 		ch0 = s.skipWhitespace()
@@ -265,25 +285,30 @@ func (s *Scanner) scan() (tok int, pos Pos, lit string) {
 		// because 0 is a special token id to remind the parser that stream is end.
 		return 0, pos, ""
 	}
-
+	// 读取标识符, 例如表名, 列名, 变量名等, 如果 isIdentExtend, 表示一定是标识符, 而不是关键字
 	if !s.r.eof() && isIdentExtend(ch0) {
 		return scanIdentifier(s)
 	}
 
-	// search a trie to get a token.
+	// search a trie to get a token. 在字典树中解析关键字或者匹配运算符
 	node := &ruleTable
 	for ch0 >= 0 && ch0 <= 255 {
+		// 不在字典树中, 应该是一个标识符
 		if node.childs[ch0] == nil || s.r.eof() {
 			break
 		}
 		node = node.childs[ch0]
+		// 当走到一个前缀的位置时候, 调用对应的前缀函数, 例如读取到 Xx, 调用 startWithXx 函数,
+		// 使用 startWithXx 继续往后读, 解析读取到的 token
 		if node.fn != nil {
 			return node.fn(s)
 		}
+		// read the next char
 		s.r.inc()
 		ch0 = s.r.peek()
 	}
-
+	// 获取 Token 的类型和字符串, 如果在字典树中没有找到, 那么就返回一个标识符
+	// 如果在字典树中能够找到, 返回对应的关键字的 token
 	tok, lit = node.token, s.r.data(&pos)
 	return
 }
@@ -360,11 +385,13 @@ func startWithDash(s *Scanner) (tok int, pos Pos, lit string) {
 	}
 	if strings.HasPrefix(s.r.s[pos.Offset:], "->>") {
 		tok = juss
+		// ->> is a special operator in MySQL. Its length is 3.
 		s.r.incN(3)
 		return
 	}
 	if strings.HasPrefix(s.r.s[pos.Offset:], "->") {
 		tok = jss
+		// -> is a special operator in MySQL. Its length is 2.
 		s.r.incN(2)
 		return
 	}
@@ -512,6 +539,7 @@ func startWithAt(s *Scanner) (tok int, pos Pos, lit string) {
 func scanIdentifier(s *Scanner) (int, Pos, string) {
 	pos := s.r.pos()
 	s.r.inc()
+	// isIdentChar 是传入的函数, 用于判断是否是标识符的一部分
 	s.r.incAsLongAs(isIdentChar)
 	return identifier, pos, s.r.data(&pos)
 }
@@ -792,9 +820,9 @@ func (s *Scanner) scanDigits() string {
 }
 
 type reader struct {
-	s string
-	p Pos
-	w int
+	s string // sql string
+	p Pos    // position
+	w int    // width of the last rune, 最近一次读取的 rune 的宽度
 }
 
 var eof = Pos{-1, -1, -1}
@@ -803,13 +831,20 @@ func (r *reader) eof() bool {
 	return r.p.Offset >= len(r.s)
 }
 
-// peek() peeks a rune from underlying reader.
+// peek() peeks a rune from underlying reader. 窥视下一个字符
 // if reader meets EOF, it will return unicode.ReplacementChar. to distinguish from
 // the real unicode.ReplacementChar, the caller should call r.eof() again to check.
 func (r *reader) peek() rune {
 	if r.eof() {
 		return unicode.ReplacementChar
 	}
+	// rune(r.s[r.p.Offset]) == 0 means illegal UTF-8 encoding.
+	// in this case, we should return the rune as it is.
+	// otherwise, we should decode the rune.
+	// if the rune is valid, we should return the decoded rune.
+	// if the rune is invalid, we should return unicode.ReplacementChar.
+	// the width of the rune is also returned.
+	// the width of the rune is used to increase the position offset.
 	v, w := rune(r.s[r.p.Offset]), 1
 	switch {
 	case v == 0:
@@ -827,6 +862,7 @@ func (r *reader) peek() rune {
 
 // inc increase the position offset of the reader.
 // peek must be called before calling inc!
+// 输入的 SQL 语句是 UTF-8 编码的, 并且是整条 SQL 语句的字符串. 也就是一个事务的所有字符串, 因此包含换行
 func (r *reader) inc() {
 	if r.s[r.p.Offset] == '\n' {
 		r.p.Line++
@@ -836,6 +872,7 @@ func (r *reader) inc() {
 	r.p.Col++
 }
 
+// incAsLongAs increases the position offset of the reader as long as the function returns true.
 func (r *reader) incN(n int) {
 	for i := 0; i < n; i++ {
 		r.inc()
